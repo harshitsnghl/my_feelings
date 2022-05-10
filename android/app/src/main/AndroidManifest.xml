@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.my_feelings">
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
    <application
         android:label="my_feelings"
         android:name="${applicationName}"

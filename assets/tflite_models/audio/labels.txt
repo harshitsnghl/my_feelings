@@ -1,0 +1,7 @@
+0 angry
+1 fear
+2 happy
+3 disgust
+4 neutral
+5 sad
+6 ps

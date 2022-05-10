@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:my_feelings/main.dart';
 import 'package:tflite/tflite.dart';
 
-class Home extends StatefulWidget {
-  const Home({
+class VideoStreamer extends StatefulWidget {
+  const VideoStreamer({
     Key? key,
   }) : super(key: key);
   @override
-  State<Home> createState() => _HomeState();
+  State<VideoStreamer> createState() => _VideoStreamerState();
 }
 
-class _HomeState extends State<Home> {
+class _VideoStreamerState extends State<VideoStreamer> {
   CameraImage? cameraImage;
   late CameraController controller;
   String output = '';
@@ -19,17 +19,17 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    controller = CameraController(cameras![0], ResolutionPreset.max);
+    controller = CameraController(cameras![1], ResolutionPreset.low);
     controller.initialize().then((_) {
       if (!mounted) {
         return;
       }
-      setState(() {
-        controller.startImageStream(
-            (imageSteam) => {cameraImage = imageSteam, runModel()});
-      });
+      // setState(() {
+      //   controller.startImageStream(
+      //       (imageSteam) => {cameraImage = imageSteam, runModel()});
+      // });
     });
-    loadModel();
+    // loadModel();
   }
 
   @override
@@ -51,35 +51,38 @@ class _HomeState extends State<Home> {
         threshold: 0.1,
         asynch: true,
       );
-      predictions!.forEach((prediction) {
+      for (var prediction in predictions!) {
+        print("Prdictions" + prediction);
         setState(() {
           output = prediction['label'];
         });
-      });
+      }
     }
   }
 
   loadModel() async {
     await Tflite.loadModel(
-        model: 'assets/model.tflite', labels: 'assets/labels.txt');
+        model: 'assets/tflite_models/video/model.tflite',
+        labels: 'assets/tflite_models/video/labels.txt');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Live SAFED'),
-      ),
-      body: Column(children: <Widget>[
+    return Container(
+      child: Column(children: <Widget>[
         Padding(
-          padding: const EdgeInsets.all(20),
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.7,
-            width: MediaQuery.of(context).size.width,
+          padding: const EdgeInsets.all(10),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height *
+                0.5 /
+                controller.value.aspectRatio,
+            width: MediaQuery.of(context).size.width * 0.5,
             child: controller.value.isInitialized
                 ? AspectRatio(
                     aspectRatio: controller.value.aspectRatio,
-                    child: CameraPreview(controller),
+                    child: CameraPreview(
+                      controller,
+                    ),
                   )
                 : Container(),
           ),

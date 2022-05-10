@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:my_feelings/home.dart';
+import 'package:my_feelings/screens/analysing_screen.dart';
+import 'package:my_feelings/widgets/video_streamer.dart';
 
 List<CameraDescription>? cameras;
 
@@ -17,20 +18,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Flutter Demo',
+        title: 'SAFED',
         theme: ThemeData(
-          // This is the theme of your application.
-          //
-          // Try running your application with "flutter run". You'll see the
-          // application has a blue toolbar. Then, without quitting the app, try
-          // changing the primarySwatch below to Colors.green and then invoke
-          // "hot reload" (press "r" in the console where you ran "flutter run",
-          // or simply save your changes to "hot reload" in a Flutter IDE).
-          // Notice that the counter didn't reset back to zero; the application
-          // is not restarted.
-          primarySwatch: Colors.deepOrange,
+          primarySwatch: Colors.lime,
         ),
         debugShowCheckedModeBanner: false,
-        home: const Home());
+        home: const AnalysingScreen());
   }
 }
