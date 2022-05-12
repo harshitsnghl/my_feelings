@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_feelings/widgets/chart.dart';
 
 class Result extends StatefulWidget {
   const Result({Key? key}) : super(key: key);
@@ -14,15 +15,12 @@ class _ResultState extends State<Result> {
       padding: const EdgeInsets.symmetric(vertical: 16.0),
       child: Column(
         children: [
-          Text(
-            'Result',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-          ),
-          SizedBox(height: 20),
+          SizedBox(height: 8),
+          const Text('Emotion Recognition Result'),
           SizedBox(
-              width: MediaQuery.of(context).size.width * 0.6,
-              child: Text(
-                  'TODO: Bar Chart with the analysis of the audio and video')),
+            width: MediaQuery.of(context).size.width * 0.6,
+            child: Chart(),
+          ),
         ],
       ),
     );

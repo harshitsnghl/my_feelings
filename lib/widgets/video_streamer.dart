@@ -16,6 +16,8 @@ class _VideoStreamerState extends State<VideoStreamer> {
   late CameraController controller;
   String output = '';
 
+  get cameras => null;
+
   @override
   void initState() {
     super.initState();

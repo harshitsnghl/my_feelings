@@ -28,6 +28,14 @@ apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 android {
     compileSdkVersion flutter.compileSdkVersion
 
+    aaptOptions {
+        noCompress 'tflite'
+        noCompress "lite"
+    }
+     lintOptions {
+        disable 'InvalidPackage'
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -44,7 +52,7 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId "com.example.my_feelings"
-        minSdkVersion 23
+        minSdkVersion 24
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -65,4 +73,6 @@ flutter {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation "org.tensorflow:tensorflow-lite-select-tf-ops:+"
+    compile 'org.tensorflow:tensorflow-lite-select-tf-ops:+'
 }

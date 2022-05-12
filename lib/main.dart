@@ -1,7 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:my_feelings/screens/analysing_screen.dart';
-import 'package:my_feelings/widgets/video_streamer.dart';
 
 List<CameraDescription>? cameras;
 
@@ -18,11 +17,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'SAFED',
-        theme: ThemeData(
-          primarySwatch: Colors.lime,
-        ),
-        debugShowCheckedModeBanner: false,
-        home: const AnalysingScreen());
+      title: 'SAFED',
+      theme: ThemeData(
+        primarySwatch: Colors.lime,
+      ),
+      debugShowCheckedModeBanner: false,
+      home: const AnalysingScreen(),
+    );
   }
 }
