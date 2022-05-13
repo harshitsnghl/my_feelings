@@ -1,19 +1,23 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_sound/public/flutter_sound_recorder.dart';
+import 'package:my_feelings/controllers/emotionController.dart';
+import 'package:my_feelings/models/emotion.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:tflite_audio/tflite_audio.dart';
 
-class AudioStreamer extends StatefulWidget {
+class AudioStreamer extends ConsumerStatefulWidget {
   const AudioStreamer({Key? key}) : super(key: key);
 
   @override
-  State<AudioStreamer> createState() => _AudioRecorderState();
+  ConsumerState<ConsumerStatefulWidget> createState() => _AudioStreamerState();
 }
 
-class _AudioRecorderState extends State<AudioStreamer> {
+class _AudioStreamerState extends ConsumerState<AudioStreamer> {
   //Record
   final recorder = FlutterSoundRecorder();
   bool isRecorderReady = false;
@@ -36,6 +40,13 @@ class _AudioRecorderState extends State<AudioStreamer> {
     // setAudio();
     // initAudioPlayer();
     loadModel();
+  }
+
+  @override
+  void dispose() {
+    recorder.closeRecorder();
+    audioPlayer.dispose();
+    super.dispose();
   }
 
   Future setAudio() async {
@@ -67,13 +78,6 @@ class _AudioRecorderState extends State<AudioStreamer> {
         position = p;
       });
     });
-  }
-
-  @override
-  void dispose() {
-    recorder.closeRecorder();
-    audioPlayer.dispose();
-    super.dispose();
   }
 
   Future record() async {
@@ -119,13 +123,13 @@ class _AudioRecorderState extends State<AudioStreamer> {
 
   loadModel() {
     TfliteAudio.loadModel(
-      model: 'assets/audio/soundclassifier.tflite',
-      label: 'assets/audio/labels.txt',
+      model: 'assets/soundclassifier.tflite',
+      label: 'assets/labels.txt',
       numThreads: 1,
       outputRawScores: true,
       inputType: 'rawAudio',
       isAsset: true,
-    );
+    ).onError((error, stackTrace) => log(error.toString()));
   }
 
   void _recorder() {
@@ -138,13 +142,71 @@ class _AudioRecorderState extends State<AudioStreamer> {
         sampleRate: 44100,
         audioLength: 44032,
         bufferSize: 22016,
-        averageWindowDuration: 1000,
-        minimumTimeBetweenSamples: 30,
-        suppressionTime: 1500,
       );
+
+      List? convert(String input) {
+        List output;
+        try {
+          output = json.decode(input);
+          return output;
+        } catch (err) {
+          print('The input is not a string representation of a list');
+          return null;
+        }
+      }
+
+      String toExact(double value) {
+        var sign = "";
+        if (value < 0) {
+          value = -value;
+          sign = "-";
+        }
+        var string = value.toString();
+        var e = string.lastIndexOf('e');
+        if (e < 0) return "$sign$string";
+        assert(string.indexOf('.') == 1);
+        var offset = int.parse(
+            string.substring(e + (string.startsWith('-', e + 1) ? 1 : 2)));
+        var digits = string.substring(0, 1) + string.substring(2, e);
+        if (offset < 0) {
+          return "${sign}0.${"0" * ~offset}$digits";
+        }
+        if (offset > 0) {
+          if (offset >= digits.length) {
+            return sign + digits.padRight(offset + 1, "0");
+          }
+          return "$sign${digits.substring(0, offset + 1)}"
+              ".${digits.substring(offset + 1)}";
+        }
+        return digits;
+      }
+
+      int convertToInt(String e) {
+        String num = (double.parse(e) * 100).toStringAsFixed(0);
+        return int.parse(num);
+      }
+
+      int i = 0;
       result.listen((event) {
-        recognition = event["recognitionResult"];
-        log(event.toString());
+        if (i++ != 0) {
+          recognition = event["recognitionResult"];
+          List<String> recognitionStringList =
+              recognition.replaceAll('[', '').replaceAll(']', '').split(",");
+
+          List<int> recognitionList =
+              recognitionStringList.map((e) => convertToInt(e)).toList();
+
+          List<Emotion> emotionList = emotionLabels
+              .asMap()
+              .entries
+              .map((label) => Emotion(
+                    emotionLabels[label.key],
+                    recognitionList[label.key],
+                  ))
+              .toList();
+
+          ref.read(emotionController.notifier).update(emotionList);
+        }
       }).onDone(() {
         setState(() {
           _recording = false;
@@ -160,49 +222,27 @@ class _AudioRecorderState extends State<AudioStreamer> {
     setState(() => _recording = false);
   }
 
-//   runModel(audio) {
-//     String recognition = "";
-//     result = TfliteAudio.startFileRecognition(
-//       audioDirectory: 'assets/angry.wav',
-//       sampleRate: 44100,
-//     );
-// // //Example for advanced users who want to utilise all optional parameters from this package.
-// //     result = TfliteAudio.startFileRecognition(
-// //       audioDirectory: "assets/sampleAudio.wav",
-// //       detectionThreshold: 0.3,
-// //       averageWindowDuration: 1000,
-// //       minimumTimeBetweenSamples: 30,
-// //       suppressionTime: 1500,
-// //       sampleRate: 44100,
-// //     );
-//     result.listen((event) {
-//       print(event);
-//       recognition = event["recognitionResult"];
-//     }).onDone(() {
-//       setState(() {
-//         _recording = false;
-//         print(recognition.split(" ")[1]);
-//         _sound = recognition.split(" ")[1];
-//       });
-//     });
-//   }
-
   @override
   Widget build(BuildContext context) {
+    final emotions = ref.watch(emotionController);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Slider(
-            min: 0,
-            max: duration.inSeconds.toDouble(),
-            value: position.inSeconds.toDouble(),
-            onChanged: (value) async {
-              position = Duration(seconds: value.toInt());
-              await audioPlayer.seek(position);
-              // Play audio if paused
-              await audioPlayer.resume();
-            },
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Slider(
+              min: 0,
+              max: duration.inSeconds.toDouble(),
+              value: position.inSeconds.toDouble(),
+              onChanged: (value) async {
+                position = Duration(seconds: value.toInt());
+                await audioPlayer.seek(position);
+                // Play audio if paused
+                await audioPlayer.resume();
+              },
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -288,24 +328,21 @@ class _AudioRecorderState extends State<AudioStreamer> {
               const SizedBox(width: 32),
             ],
           ),
-          Text(
-            _sound,
-            style: Theme.of(context).textTheme.headline5,
-          ),
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () async {},
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.wifi_protected_setup),
-                  SizedBox(width: 8),
-                  Text('Analyse Emotion'),
-                ],
-              ),
+            child: Text(
+              _sound,
+              style: Theme.of(context).textTheme.headline5,
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+            child: Text(emotions[0].emotion),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+            child: Text(emotions[0].value.toString()),
+          )
         ],
       ),
     );

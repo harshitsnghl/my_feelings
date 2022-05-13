@@ -1,56 +1,42 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
+import 'package:my_feelings/controllers/emotionController.dart';
+import 'package:my_feelings/models/emotion.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
-import 'package:syncfusion_flutter_charts/sparkcharts.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class Chart extends StatefulWidget {
-  Chart({Key? key}) : super(key: key);
+class Chart extends ConsumerStatefulWidget {
+  const Chart({Key? key}) : super(key: key);
 
   @override
-  State<Chart> createState() => _ChartState();
+  ConsumerState<ConsumerStatefulWidget> createState() => _ChartState();
 }
 
-class _ChartState extends State<Chart> {
-  late List<EmotionData> _chartData;
+class _ChartState extends ConsumerState<Chart> {
   late TooltipBehavior _tooltipBehavior;
 
   @override
   void initState() {
     super.initState();
-    _chartData = getChartData();
     _tooltipBehavior = TooltipBehavior(enable: true);
-  }
-
-  List<EmotionData> getChartData() {
-    final List<EmotionData> chartData = [
-      EmotionData('Happy', 100),
-      EmotionData('Angry', 40),
-      EmotionData('Sad', 10),
-      EmotionData('Surprise', 80),
-      EmotionData('Disgust', 80),
-      EmotionData('Fear', 66),
-      EmotionData('Neutral', 46),
-    ];
-    return chartData;
   }
 
   @override
   Widget build(BuildContext context) {
+    final emotions = ref.watch(emotionController);
+
     return Center(
       child: SizedBox(
         child: SfCartesianChart(
           tooltipBehavior: _tooltipBehavior,
-          series: <ChartSeries<EmotionData, String>>[
-            BarSeries<EmotionData, String>(
+          series: <ChartSeries<Emotion, String>>[
+            BarSeries<Emotion, String>(
                 name: 'Emotion',
-                dataSource: _chartData,
-                xValueMapper: (EmotionData emotion, _) => emotion.emotion,
-                yValueMapper: (EmotionData emotion, _) => emotion.value,
-                dataLabelMapper: (EmotionData emotion, _) =>
+                dataSource: emotions,
+                xValueMapper: (Emotion emotion, _) => emotion.emotion,
+                yValueMapper: (Emotion emotion, _) => emotion.value,
+                dataLabelMapper: (Emotion emotion, _) =>
                     emotion.value.toString(),
-                dataLabelSettings: DataLabelSettings(
+                dataLabelSettings: const DataLabelSettings(
                     isVisible: true,
                     labelAlignment: ChartDataLabelAlignment.auto),
                 enableTooltip: true)
@@ -76,10 +62,4 @@ class _ChartState extends State<Chart> {
       // ),
     );
   }
-}
-
-class EmotionData {
-  EmotionData(this.emotion, this.value);
-  final String emotion;
-  final int value;
 }

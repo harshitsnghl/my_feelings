@@ -1,2 +1,8 @@
-0 Background Noise
-1 Happy
+0 Angry
+1 Background Noise
+2 Disgust
+3 Fearful
+4 Happy
+5 Neutral
+6 Sad
+7 Surprise

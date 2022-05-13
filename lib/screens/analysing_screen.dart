@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_feelings/widgets/chart.dart';
-import 'package:my_feelings/widgets/result.dart';
-import 'package:my_feelings/widgets/video_streamer.dart';
 import 'package:my_feelings/widgets/audio_streamer.dart';
+import 'package:my_feelings/widgets/result.dart';
 
 class AnalysingScreen extends StatefulWidget {
   const AnalysingScreen({Key? key}) : super(key: key);
