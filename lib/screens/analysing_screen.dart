@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_feelings/widgets/audio_streamer.dart';
-import 'package:my_feelings/widgets/result.dart';
+import 'package:my_feelings/widgets/chart.dart';
 
 class AnalysingScreen extends StatefulWidget {
   const AnalysingScreen({Key? key}) : super(key: key);
@@ -29,7 +29,7 @@ class _AnalysingScreenState extends State<AnalysingScreen> {
                 //   'Speech and Facial Emotion Recognizer',
                 //   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 // ),
-                Result(),
+                Chart(),
                 SizedBox(height: 10),
                 // VideoStreamer(),
                 AudioStreamer(),

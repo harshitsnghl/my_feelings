@@ -1,12 +1,15 @@
-import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:duration_picker_dialog_box/duration_picker_dialog_box.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_sound/public/flutter_sound_recorder.dart';
 import 'package:my_feelings/controllers/emotionController.dart';
+import 'package:my_feelings/maps/emojiMap.dart';
 import 'package:my_feelings/models/emotion.dart';
+import 'package:my_feelings/utility/convertToInt.dart';
+import 'package:my_feelings/utility/formatTime.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:tflite_audio/tflite_audio.dart';
 
@@ -19,7 +22,7 @@ class AudioStreamer extends ConsumerStatefulWidget {
 
 class _AudioStreamerState extends ConsumerState<AudioStreamer> {
   //Record
-  final recorder = FlutterSoundRecorder();
+  final audioRecorder = FlutterSoundRecorder();
   bool isRecorderReady = false;
 
   // Playback
@@ -29,35 +32,48 @@ class _AudioStreamerState extends ConsumerState<AudioStreamer> {
   Duration duration = Duration.zero;
   Duration position = Duration.zero;
 
-  String _sound = "Press the button to start";
-  bool _recording = false;
+  String _sound = "";
+  bool tfliteRecording = false;
   late Stream<Map<dynamic, dynamic>> result;
+
+  int numberOfInference = 5;
 
   @override
   void initState() {
     super.initState();
-    // initRecorder();
-    // setAudio();
-    // initAudioPlayer();
+    initRecorder();
+    initAudioPlayer();
+    setAudio();
     loadModel();
   }
 
   @override
   void dispose() {
-    recorder.closeRecorder();
+    audioRecorder.closeRecorder();
     audioPlayer.dispose();
     super.dispose();
   }
 
   Future setAudio() async {
     audioPlayer.setReleaseMode(ReleaseMode.STOP);
+    String file = '/data/user/0/com.example.my_feelings/cache/audio';
+    await audioPlayer.setUrl(file, isLocal: true);
+  }
 
-    // if (file)
-    //   await audioPlayer.setUrl(file, isLocal: true);
-    // else {
-    //   file = '/data/user/0/com.example.my_feelings/cache/audio';
-    //   await audioPlayer.setUrl(file, isLocal: true);
-    // }
+  Future initRecorder() async {
+    final status = await Permission.microphone.request();
+
+    if (status != PermissionStatus.granted) {
+      throw Exception('Microphone permission not granted');
+    }
+
+    await audioRecorder.openRecorder();
+
+    isRecorderReady = true;
+
+    audioRecorder.setSubscriptionDuration(
+      const Duration(milliseconds: 500),
+    );
   }
 
   initAudioPlayer() {
@@ -87,38 +103,15 @@ class _AudioStreamerState extends ConsumerState<AudioStreamer> {
       position = Duration.zero;
     });
     if (!isRecorderReady) return;
-    await recorder.startRecorder(toFile: 'audio');
+    await audioRecorder.startRecorder(toFile: 'audio');
   }
 
   Future stop() async {
     if (!isRecorderReady) return;
-    final path = await recorder.stopRecorder();
+    final path = await audioRecorder.stopRecorder();
     final audioFile = File(path!);
-    // print("Recorded Audio File: $audioFile");
+    print("Recorded Audio File: $audioFile");
     await audioPlayer.setUrl(audioFile.path, isLocal: true);
-  }
-
-  Future initRecorder() async {
-    final status = await Permission.microphone.request();
-
-    if (status != PermissionStatus.granted) {
-      throw Exception('Microphone permission not granted');
-    }
-
-    await recorder.openRecorder();
-
-    isRecorderReady = true;
-
-    recorder.setSubscriptionDuration(
-      const Duration(milliseconds: 500),
-    );
-  }
-
-  formatTime(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-    final twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return '$twoDigitMinutes:$twoDigitSeconds';
   }
 
   loadModel() {
@@ -132,68 +125,31 @@ class _AudioStreamerState extends ConsumerState<AudioStreamer> {
     ).onError((error, stackTrace) => log(error.toString()));
   }
 
-  void _recorder() {
+  void _tfliteRecorder() {
     String recognition = "";
-    if (!_recording) {
-      setState(() => _recording = true);
+    List<int> recognitionList = [];
+
+    if (!tfliteRecording) {
+      record();
+      setState(() => tfliteRecording = true);
       result = TfliteAudio.startAudioRecognition(
-        numOfInferences: 5,
+        numOfInferences: numberOfInference,
         detectionThreshold: 0.4,
         sampleRate: 44100,
         audioLength: 44032,
         bufferSize: 22016,
       );
 
-      List? convert(String input) {
-        List output;
-        try {
-          output = json.decode(input);
-          return output;
-        } catch (err) {
-          print('The input is not a string representation of a list');
-          return null;
-        }
-      }
-
-      String toExact(double value) {
-        var sign = "";
-        if (value < 0) {
-          value = -value;
-          sign = "-";
-        }
-        var string = value.toString();
-        var e = string.lastIndexOf('e');
-        if (e < 0) return "$sign$string";
-        assert(string.indexOf('.') == 1);
-        var offset = int.parse(
-            string.substring(e + (string.startsWith('-', e + 1) ? 1 : 2)));
-        var digits = string.substring(0, 1) + string.substring(2, e);
-        if (offset < 0) {
-          return "${sign}0.${"0" * ~offset}$digits";
-        }
-        if (offset > 0) {
-          if (offset >= digits.length) {
-            return sign + digits.padRight(offset + 1, "0");
-          }
-          return "$sign${digits.substring(0, offset + 1)}"
-              ".${digits.substring(offset + 1)}";
-        }
-        return digits;
-      }
-
-      int convertToInt(String e) {
-        String num = (double.parse(e) * 100).toStringAsFixed(0);
-        return int.parse(num);
-      }
-
       int i = 0;
       result.listen((event) {
-        if (i++ != 0) {
+        if (i != 0 &&
+            i != numberOfInference - 1 &&
+            i != numberOfInference - 2) {
           recognition = event["recognitionResult"];
           List<String> recognitionStringList =
               recognition.replaceAll('[', '').replaceAll(']', '').split(",");
 
-          List<int> recognitionList =
+          recognitionList =
               recognitionStringList.map((e) => convertToInt(e)).toList();
 
           List<Emotion> emotionList = emotionLabels
@@ -207,19 +163,35 @@ class _AudioStreamerState extends ConsumerState<AudioStreamer> {
 
           ref.read(emotionController.notifier).update(emotionList);
         }
-      }).onDone(() {
+        i++;
+      }).onDone(() async {
         setState(() {
-          _recording = false;
-          _sound = recognition.split(" ")[1];
+          tfliteRecording = false;
+          _sound = getEmotionFromRawValues(recognitionList);
         });
+        stop();
       });
+    } else {
+      tfliteRecordingStop();
+      stop();
     }
-    stop();
   }
 
-  void _stop() {
+  String getEmotionFromRawValues(List<int> recognitionList) {
+    int max = 0;
+    int index = 0;
+    for (int i = 0; i < recognitionList.length; i++) {
+      if (recognitionList[i] > max) {
+        max = recognitionList[i];
+        index = i;
+      }
+    }
+    return emotionLabels[index];
+  }
+
+  void tfliteRecordingStop() {
     TfliteAudio.stopAudioRecognition();
-    setState(() => _recording = false);
+    setState(() => tfliteRecording = false);
   }
 
   @override
@@ -232,20 +204,55 @@ class _AudioStreamerState extends ConsumerState<AudioStreamer> {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Slider(
-              min: 0,
-              max: duration.inSeconds.toDouble(),
-              value: position.inSeconds.toDouble(),
-              onChanged: (value) async {
-                position = Duration(seconds: value.toInt());
-                await audioPlayer.seek(position);
-                // Play audio if paused
-                await audioPlayer.resume();
-              },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Slider(
+                    min: 0,
+                    max: duration.inSeconds.toDouble(),
+                    value: position.inSeconds.toDouble(),
+                    onChanged: (value) async {
+                      position = Duration(seconds: value.toInt());
+                      await audioPlayer.seek(position);
+                      // Play audio if paused
+                      await audioPlayer.resume();
+                    },
+                  ),
+                ),
+                Column(
+                  children: [
+                    IconButton(
+                      onPressed: () async => {
+                        showDurationPicker(
+                          context: context,
+                          initialDuration: const Duration(
+                            days: 0,
+                            hours: 0,
+                            minutes: 0,
+                            seconds: 5,
+                            milliseconds: 0,
+                            microseconds: 0,
+                          ),
+                          durationPickerMode: DurationPickerMode.Second,
+                        ).then((value) => {
+                              setState(() {
+                                numberOfInference = value!.inSeconds.toInt();
+                              })
+                            })
+                      },
+                      icon: const Icon(Icons.timer),
+                    ),
+                    Text(
+                      numberOfInference.toString(),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.only(right: 85.0, left: 40),
             child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -254,7 +261,7 @@ class _AudioStreamerState extends ConsumerState<AudioStreamer> {
                 ]),
           ),
           StreamBuilder<RecordingDisposition>(
-              stream: recorder.onProgress,
+              stream: audioRecorder.onProgress,
               builder: (context, snapshot) {
                 duration =
                     snapshot.hasData ? snapshot.data!.duration : Duration.zero;
@@ -283,11 +290,10 @@ class _AudioStreamerState extends ConsumerState<AudioStreamer> {
               CircleAvatar(
                 radius: 35,
                 child: IconButton(
-                  icon: Icon(_recording ? Icons.pause : Icons.play_arrow),
-                  // icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                  icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
                   iconSize: 50,
                   disabledColor: Colors.grey,
-                  onPressed: recorder.isRecording
+                  onPressed: audioRecorder.isRecording
                       ? null
                       : () async {
                           if (isPlaying) {
@@ -305,44 +311,31 @@ class _AudioStreamerState extends ConsumerState<AudioStreamer> {
                 radius: 35,
                 child: IconButton(
                   icon: Icon(
-                    _recording ? Icons.stop : Icons.fiber_manual_record_rounded,
+                    tfliteRecording
+                        ? Icons.stop
+                        : Icons.fiber_manual_record_rounded,
                   ),
-                  // icon: Icon(
-                  //   recorder.isRecording
-                  //       ? Icons.stop
-                  //       : Icons.fiber_manual_record_rounded,
-                  // ),
-                  iconSize: 50,
-                  onPressed: _recorder,
-                  // onPressed: () async {
-                  //   if (recorder.isRecording) {
-                  //     await stop();
-                  //   } else {recorder.isRecording
-                  //     await record();
-                  //   }
 
-                  //   setState(() {});
-                  // },
+                  iconSize: 50,
+                  // onPressed: _tfliteRecorder,
+                  onPressed: () async {
+                    _tfliteRecorder();
+                  },
                 ),
               ),
               const SizedBox(width: 32),
             ],
           ),
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(18.0),
             child: Text(
-              _sound,
-              style: Theme.of(context).textTheme.headline5,
+              _sound + _sound != '' ? emojiMap[_sound]! : '',
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10.0),
-            child: Text(emotions[0].emotion),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10.0),
-            child: Text(emotions[0].value.toString()),
-          )
         ],
       ),
     );
