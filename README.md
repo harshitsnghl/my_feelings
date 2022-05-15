@@ -1,16 +1,39 @@
-# my_feelings
+# MY FEELINGS
 
-A new Flutter project.
+<h1 align="center"> Speech Emotion Recognition App</h1> <br>
+<p align="center">Simple speech emotion recognition application developed in Flutter using Tensorflow Lite framework to integrate a speech emotion classification model</p>
 
-## Getting Started
+<p align="center">
+    <img src="assets/images/ss1.jpeg" height="400">
+    <img src="assets/images/ss2.jpeg" height="400">
+</p>
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
+## Tecnologies
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+This application was developed using a cross-platform framework that allows multi-operanting systems support namely iOS and Android:
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- [Flutter](https://flutter.dev) cross-platform framework 
+- [Tensorflow Lite](https://www.tensorflow.org/lite) used to integrate machine learning models into mobile applications
+
+## How to run
+
+As a requirement, it is necessary to have Flutter already installed. To run the mobile application:
+
+1. Get flutter dependencies:
+
+```
+flutter pub get
+```
+
+2. After mobile device connected, run the application doing:
+
+```
+flutter run
+```
+
+## Authors
+<a href="https://github.com/harshitsnghl">
+  Harshit Singhal
+</a>
+
