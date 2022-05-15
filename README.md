@@ -9,7 +9,7 @@
 </p>
 
 
-## Tecnologies
+## Technologies
 
 This application was developed using a cross-platform framework that allows multi-operanting systems support namely iOS and Android:
 
@@ -32,7 +32,7 @@ flutter pub get
 flutter run
 ```
 
-## Authors
+## Author
 <a href="https://github.com/harshitsnghl">
   Harshit Singhal
 </a>
